@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -112,6 +112,21 @@ def get_weekly_summary(week_start: Optional[str] = None, week_end: Optional[str]
         "sessions": sessions,
         "suggestions": suggestions,
     }
+
+
+_ADMIN_KEY = "muscu-seed-2026"
+
+
+@app.post("/admin/seed")
+def post_admin_seed(x_admin_key: str = Header(...)):
+    if x_admin_key != _ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Clé admin invalide")
+    try:
+        from backend.seed_data import main as run_seed
+        run_seed()
+        return {"status": "ok", "detail": "Seed exécuté avec succès"}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 # Doit être monté en dernier — les routes API ont la priorité
