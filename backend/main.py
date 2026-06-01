@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
-from database import (
+from backend.database import (
     init_db,
     create_exercise,
     list_exercises,
@@ -71,7 +71,7 @@ def post_exercise(body: ExerciseCreate):
 @app.post("/exercises/detect")
 def post_exercise_detect(body: ExerciseDetectRequest):
     # ai.py est créé au Sprint 3
-    from ai import detect_machine
+    from backend.ai import detect_machine
     result = detect_machine(body.image_base64)
     if result is None:
         raise HTTPException(status_code=422, detail="Image non reconnue comme machine de musculation")
@@ -94,7 +94,7 @@ def get_sessions(exercise_name: str):
 @app.get("/weekly-summary")
 def get_weekly_summary(week_start: Optional[str] = None, week_end: Optional[str] = None):
     # ai.py est créé au Sprint 5
-    from ai import weekly_suggestion
+    from backend.ai import weekly_suggestion
 
     if week_start is None or week_end is None:
         today = date.today()
