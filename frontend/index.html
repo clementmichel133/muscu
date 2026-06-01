@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Séance — Muscu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Barlow', sans-serif; background: #030712; }
+    .heading { font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.04em; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-gray-100 pb-24">
+
+  <header class="px-4 pt-8 pb-4">
+    <h1 class="text-3xl font-bold text-orange-500 uppercase heading">Séance</h1>
+    <p class="text-gray-400 text-sm" id="dateDisplay"></p>
+  </header>
+
+  <main class="px-4 space-y-5">
+
+    <div>
+      <label for="date" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Date</label>
+      <input type="date" id="date"
+        class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 cursor-pointer min-h-[52px]">
+    </div>
+
+    <div>
+      <label for="exerciseSelect" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Exercice</label>
+      <select id="exerciseSelect"
+        class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 cursor-pointer min-h-[52px]">
+        <option value="">Choisir un exercice…</option>
+      </select>
+    </div>
+
+    <!-- Référence dernière séance -->
+    <div id="lastSession" class="hidden bg-gray-800 border border-gray-700 rounded-xl px-4 py-3">
+      <p class="text-xs uppercase tracking-widest text-gray-500 mb-1 font-semibold">Dernière séance</p>
+      <p id="lastSessionText" class="text-gray-300 text-sm"></p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div>
+        <label for="sets" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Séries</label>
+        <input type="number" id="sets" min="1" value="3" inputmode="numeric"
+          class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-2xl font-bold text-center rounded-xl px-2 py-3 focus:outline-none focus:border-orange-500 min-h-[64px]">
+      </div>
+      <div>
+        <label for="reps" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Reps</label>
+        <input type="number" id="reps" min="1" value="10" inputmode="numeric"
+          class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-2xl font-bold text-center rounded-xl px-2 py-3 focus:outline-none focus:border-orange-500 min-h-[64px]">
+      </div>
+      <div>
+        <label for="weight" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Poids kg</label>
+        <input type="number" id="weight" min="0" step="0.5" value="20" inputmode="decimal"
+          class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-2xl font-bold text-center rounded-xl px-2 py-3 focus:outline-none focus:border-orange-500 min-h-[64px]">
+      </div>
+    </div>
+
+    <button id="submitBtn"
+      class="w-full bg-orange-500 hover:bg-orange-400 text-white text-xl font-bold uppercase heading rounded-xl py-5 transition-colors duration-200 cursor-pointer min-h-[64px] disabled:opacity-60">
+      Enregistrer
+    </button>
+
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50">
+    <div class="grid grid-cols-4 h-16">
+      <a href="index.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-orange-500 cursor-pointer" aria-current="page">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+        </svg>
+        Séance
+      </a>
+      <a href="exercises.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+        Exercices
+      </a>
+      <a href="history.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+        </svg>
+        Historique
+      </a>
+      <a href="weekly.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5m-9-6h.008v.008H12V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM9.75 12h.008v.008H9.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+        Semaine
+      </a>
+    </div>
+  </nav>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('date').value = todayISO();
+    document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+
+    api.getExercises().then(exercises => {
+      const sel = document.getElementById('exerciseSelect');
+      exercises.forEach(ex => {
+        const opt = document.createElement('option');
+        opt.value = ex.id;
+        opt.dataset.name = ex.name;
+        opt.textContent = ex.name;
+        sel.appendChild(opt);
+      });
+    }).catch(() => showToast('Backend inaccessible', 'error'));
+
+    document.getElementById('exerciseSelect').addEventListener('change', async function () {
+      const lastDiv = document.getElementById('lastSession');
+      const opt = this.options[this.selectedIndex];
+      if (!opt.value) { lastDiv.classList.add('hidden'); return; }
+      try {
+        const history = await api.getHistory(opt.dataset.name);
+        if (history.length) {
+          const s = history[0];
+          document.getElementById('lastSessionText').textContent =
+            `${s.date} — ${s.sets} × ${s.reps} reps @ ${s.weight_kg} kg`;
+          lastDiv.classList.remove('hidden');
+        } else {
+          lastDiv.classList.add('hidden');
+        }
+      } catch {
+        lastDiv.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('submitBtn');
+      const sel = document.getElementById('exerciseSelect');
+      if (!sel.value) return showToast('Choisir un exercice', 'error');
+
+      const payload = {
+        date: document.getElementById('date').value,
+        exercise_id: parseInt(sel.value),
+        sets: parseInt(document.getElementById('sets').value),
+        reps: parseInt(document.getElementById('reps').value),
+        weight_kg: parseFloat(document.getElementById('weight').value),
+      };
+      if (!payload.date || [payload.sets, payload.reps, payload.weight_kg].some(isNaN)) {
+        return showToast('Remplir tous les champs', 'error');
+      }
+
+      setLoading(btn, true);
+      try {
+        await api.createSession(payload);
+        showToast('Séance enregistrée !');
+        document.getElementById('sets').value = '3';
+        document.getElementById('reps').value = '10';
+        document.getElementById('weight').value = '20';
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+  </script>
+</body>
+</html>
