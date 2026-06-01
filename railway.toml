@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+startCommand = "sh -c 'uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 healthcheckPath = "/docs"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
