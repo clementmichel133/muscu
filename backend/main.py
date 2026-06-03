@@ -48,12 +48,19 @@ class ExerciseDetectRequest(BaseModel):
     image_base64: str
 
 
+class SetItem(BaseModel):
+    reps: int
+    weight_kg: float
+
+
 class SessionCreate(BaseModel):
     date: str  # YYYY-MM-DD
     exercise_id: int
-    sets: int
-    reps: int
-    weight_kg: float
+    sets_data: Optional[list[SetItem]] = None
+    # Legacy fields kept for backward compatibility
+    sets: Optional[int] = None
+    reps: Optional[int] = None
+    weight_kg: Optional[float] = None
 
 
 # --- Endpoints ---
@@ -70,7 +77,6 @@ def post_exercise(body: ExerciseCreate):
 
 @app.post("/exercises/detect")
 def post_exercise_detect(body: ExerciseDetectRequest):
-    # ai.py est créé au Sprint 3
     from backend.ai import detect_machine
     result = detect_machine(body.image_base64)
     if result is None:
@@ -80,7 +86,19 @@ def post_exercise_detect(body: ExerciseDetectRequest):
 
 @app.post("/sessions", status_code=201)
 def post_session(body: SessionCreate):
-    return create_session(body.date, body.exercise_id, body.sets, body.reps, body.weight_kg)
+    sets_data = [s.model_dump() for s in body.sets_data] if body.sets_data else None
+    sets = body.sets
+    reps = body.reps
+    weight_kg = body.weight_kg
+    # Derive legacy fields from sets_data when not provided
+    if sets_data:
+        if sets is None:
+            sets = len(sets_data)
+        if reps is None:
+            reps = sets_data[0]["reps"]
+        if weight_kg is None:
+            weight_kg = sets_data[0]["weight_kg"]
+    return create_session(body.date, body.exercise_id, sets, reps, weight_kg, sets_data)
 
 
 @app.get("/sessions/{exercise_name}")
@@ -93,7 +111,6 @@ def get_sessions(exercise_name: str):
 
 @app.get("/weekly-summary")
 def get_weekly_summary(week_start: Optional[str] = None, week_end: Optional[str] = None):
-    # ai.py est créé au Sprint 5
     from backend.ai import weekly_suggestion
 
     if week_start is None or week_end is None:

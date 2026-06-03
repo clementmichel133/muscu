@@ -33,6 +33,15 @@ def init_db():
                 weight_kg   REAL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS session_sets (
+                id          INTEGER PRIMARY KEY,
+                session_id  INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
+                set_number  INTEGER NOT NULL,
+                reps        INTEGER NOT NULL,
+                weight_kg   REAL NOT NULL
+            )
+        """)
         conn.commit()
 
 
@@ -59,32 +68,66 @@ def get_exercise(exercise_id: int) -> dict | None:
 
 def list_exercises() -> list[dict]:
     with get_connection() as conn:
-        rows = conn.execute("SELECT * FROM exercises ORDER BY name").fetchall()
+        rows = conn.execute("""
+            SELECT e.*,
+                   MAX(s.date) AS last_session_date,
+                   COUNT(s.id) AS session_count
+            FROM exercises e
+            LEFT JOIN sessions s ON s.exercise_id = e.id
+            GROUP BY e.id
+            ORDER BY e.name
+        """).fetchall()
     return [_exercise_row(r) for r in rows]
 
 
 def _exercise_row(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["muscles"] = json.loads(d["muscles"]) if d["muscles"] else []
+    if "last_session_date" not in d:
+        d["last_session_date"] = None
+    if "session_count" not in d:
+        d["session_count"] = 0
     return d
 
 
 # --- Sessions ---
 
-def create_session(date: str, exercise_id: int, sets: int, reps: int, weight_kg: float) -> dict:
+def create_session(
+    date: str,
+    exercise_id: int,
+    sets: int = None,
+    reps: int = None,
+    weight_kg: float = None,
+    sets_data: list = None,
+) -> dict:
     with get_connection() as conn:
         cur = conn.execute(
             "INSERT INTO sessions (date, exercise_id, sets, reps, weight_kg) VALUES (?, ?, ?, ?, ?)",
             (date, exercise_id, sets, reps, weight_kg),
         )
+        session_id = cur.lastrowid
+        if sets_data:
+            for i, s in enumerate(sets_data, start=1):
+                conn.execute(
+                    "INSERT INTO session_sets (session_id, set_number, reps, weight_kg) VALUES (?, ?, ?, ?)",
+                    (session_id, i, s["reps"], s["weight_kg"]),
+                )
         conn.commit()
-        return get_session(cur.lastrowid)
+        return get_session(session_id)
 
 
 def get_session(session_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
-    return dict(row) if row else None
+        if row is None:
+            return None
+        result = dict(row)
+        sets_rows = conn.execute(
+            "SELECT set_number, reps, weight_kg FROM session_sets WHERE session_id = ? ORDER BY set_number",
+            (session_id,),
+        ).fetchall()
+        result["sets_data"] = [dict(r) for r in sets_rows]
+    return result
 
 
 def list_sessions_by_exercise(exercise_name: str) -> list[dict]:
@@ -98,7 +141,16 @@ def list_sessions_by_exercise(exercise_name: str) -> list[dict]:
             """,
             (exercise_name,),
         ).fetchall()
-    return [dict(r) for r in rows]
+        result = []
+        for row in rows:
+            d = dict(row)
+            sets_rows = conn.execute(
+                "SELECT set_number, reps, weight_kg FROM session_sets WHERE session_id = ? ORDER BY set_number",
+                (d["id"],),
+            ).fetchall()
+            d["sets_data"] = [dict(r) for r in sets_rows]
+            result.append(d)
+    return result
 
 
 def list_sessions_for_week(week_start: str, week_end: str) -> list[dict]:
