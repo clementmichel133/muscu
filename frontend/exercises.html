@@ -8,117 +8,215 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Barlow', sans-serif; background: #030712; }
-    .heading { font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.04em; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    body { font-family:'Barlow',sans-serif; background:#030712; touch-action:manipulation; }
+    .heading { font-family:'Barlow Condensed',sans-serif; letter-spacing:.04em; }
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important}}
+    .modal-scroll::-webkit-scrollbar { width:4px; }
+    .modal-scroll::-webkit-scrollbar-track { background:#111827; border-radius:2px; }
+    .modal-scroll::-webkit-scrollbar-thumb { background:#4B5563; border-radius:2px; }
+    .modal-scroll { scrollbar-width:thin; scrollbar-color:#4B5563 #111827; }
+    .modal-scroll, .modal-body {
+      overflow-y: scroll !important;
+      -webkit-overflow-scrolling: touch !important;
+      max-height: 75vh !important;
     }
   </style>
 </head>
-<body class="min-h-screen text-gray-100 pb-24">
+<body class="min-h-screen text-gray-100 pb-40">
 
-  <header class="px-4 pt-8 pb-4">
+  <header class="px-4 pt-8 pb-3">
     <h1 class="text-3xl font-bold text-orange-500 uppercase heading">Exercices</h1>
-    <p class="text-gray-400 text-sm" id="exerciseCount"></p>
+    <p class="text-gray-500 text-sm" id="exerciseCount"></p>
   </header>
 
-  <main class="px-4" id="exerciseList">
-    <p class="text-gray-500 text-center py-8">Chargement…</p>
+  <!-- Search + muscle filter -->
+  <div class="px-4 space-y-3 mb-4">
+    <div class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+      <input type="text" id="searchInput" placeholder="Rechercher un exercice…"
+        class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-orange-500 min-h-[52px]">
+    </div>
+    <div id="muscleFilters" class="flex gap-2 overflow-x-auto pb-1 scrollbar-none"></div>
+  </div>
+
+  <!-- Exercise library -->
+  <main class="px-4" id="libraryContainer">
+    <div class="flex items-center justify-center py-12">
+      <svg class="w-6 h-6 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+    </div>
   </main>
 
   <!-- FAB -->
   <button id="fabBtn"
-    class="fixed bottom-20 right-4 w-14 h-14 bg-orange-500 hover:bg-orange-400 rounded-full flex items-center justify-center shadow-lg z-40 cursor-pointer transition-colors duration-200"
-    aria-label="Ajouter un exercice">
-    <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
+    class="fixed bottom-20 right-4 w-14 h-14 bg-orange-500 hover:bg-orange-400 rounded-full flex items-center justify-center shadow-xl z-40 cursor-pointer transition-colors"
+    aria-label="Nouvel exercice">
+    <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
   </button>
 
-  <!-- Modal -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="Ajouter un exercice">
-    <div class="bg-gray-900 border-t border-gray-700 rounded-t-2xl w-full max-h-[88vh] overflow-y-auto p-5">
+  <!-- ── New exercise modal ──────────────────────────────────────────────────── -->
+  <div id="newExModal" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/75" role="dialog" aria-label="Nouvel exercice">
+    <div class="absolute inset-0" id="newExBackdrop"></div>
+    <div class="relative bg-gray-900 rounded-t-2xl w-full flex flex-col" style="height:88vh;max-height:88vh">
 
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-xl font-bold heading uppercase">Ajouter un exercice</h2>
-        <button id="closeModal" class="text-gray-400 hover:text-white cursor-pointer transition-colors duration-200" aria-label="Fermer">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-5">
-        <button id="tabManuel" onclick="switchTab('manuel')"
-          class="flex-1 py-2.5 rounded-xl text-sm font-semibold uppercase cursor-pointer transition-colors duration-200 bg-orange-500 text-white">
-          Manuel
-        </button>
-        <button id="tabPhoto" onclick="switchTab('photo')"
-          class="flex-1 py-2.5 rounded-xl text-sm font-semibold uppercase cursor-pointer transition-colors duration-200 bg-gray-700 text-gray-300 hover:bg-gray-600">
-          Photo
-        </button>
-      </div>
-
-      <!-- Panel : Manuel -->
-      <div id="panelManuel" class="space-y-4">
-        <div>
-          <label for="manualName" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Nom *</label>
-          <input type="text" id="manualName" placeholder="Ex : Développé couché" autocomplete="off"
-            class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 min-h-[52px]">
+      <!-- Modal header -->
+      <div class="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-800">
+        <div class="flex items-center gap-2">
+          <button id="newExBack" class="hidden text-gray-400 hover:text-white transition-colors cursor-pointer p-1" aria-label="Retour">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+          </button>
+          <h2 id="newExTitle" class="text-lg font-bold heading uppercase">Nouvel exercice</h2>
         </div>
-        <div>
-          <label for="manualDesc" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Description</label>
-          <textarea id="manualDesc" rows="2" placeholder="Ex : Prise large, descente lente 3s…"
-            class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 resize-none"></textarea>
-        </div>
-        <button id="manualSubmit"
-          class="w-full bg-green-500 hover:bg-green-400 text-white text-lg font-bold uppercase heading rounded-xl py-4 transition-colors duration-200 cursor-pointer min-h-[56px] disabled:opacity-60">
-          Ajouter
+        <button id="newExClose" class="text-gray-500 hover:text-white transition-colors cursor-pointer p-1" aria-label="Fermer">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <!-- Panel : Photo -->
-      <div id="panelPhoto" class="hidden space-y-4">
+      <div class="modal-scroll flex-1 overflow-y-scroll overscroll-contain" style="min-height:0">
 
-        <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden" aria-label="Choisir une photo">
-
-        <button id="photoBtn" onclick="document.getElementById('photoInput').click()"
-          class="w-full border-2 border-dashed border-gray-600 hover:border-orange-500 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-400 hover:text-orange-400 cursor-pointer transition-colors duration-200">
-          <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-          </svg>
-          <span class="text-sm font-semibold">Prendre une photo</span>
-        </button>
-
-        <!-- Aperçu + bouton Analyser -->
-        <div id="photoPreviewDiv" class="hidden space-y-3">
-          <img id="photoPreview" class="w-full rounded-xl object-cover max-h-52" alt="Aperçu de la machine">
-          <button id="analyzeBtn"
-            class="w-full bg-orange-500 hover:bg-orange-400 text-white text-lg font-bold uppercase heading rounded-xl py-4 transition-colors duration-200 cursor-pointer min-h-[56px] disabled:opacity-60">
-            Analyser avec Claude
+        <!-- Step 0: mode selector -->
+        <div id="stepMode" class="p-4 space-y-3">
+          <p class="text-gray-400 text-sm">Comment veux-tu identifier l'exercice ?</p>
+          <button id="modeDictate"
+            class="w-full flex items-center gap-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl px-4 py-4 transition-colors cursor-pointer min-h-[64px]">
+            <svg class="w-7 h-7 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
+            <div class="text-left">
+              <p class="font-bold text-white">Dicter</p>
+              <p class="text-gray-400 text-sm">Dis le nom à voix haute</p>
+            </div>
+          </button>
+          <button id="modePhoto"
+            class="w-full flex items-center gap-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl px-4 py-4 transition-colors cursor-pointer min-h-[64px]">
+            <svg class="w-7 h-7 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/></svg>
+            <div class="text-left">
+              <p class="font-bold text-white">Photo de la machine</p>
+              <p class="text-gray-400 text-sm">Claude Vision + ExerciseDB</p>
+            </div>
+          </button>
+          <button id="modeManual"
+            class="w-full flex items-center gap-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl px-4 py-4 transition-colors cursor-pointer min-h-[64px]">
+            <svg class="w-7 h-7 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+            <div class="text-left">
+              <p class="font-bold text-white">Saisie manuelle</p>
+              <p class="text-gray-400 text-sm">Tape le nom directement</p>
+            </div>
           </button>
         </div>
 
-        <!-- Résultat de la détection -->
-        <div id="detectResult" class="hidden space-y-4 border-t border-gray-700 pt-4">
+        <!-- Step 1a: dictation -->
+        <div id="stepDictate" class="hidden p-4 space-y-4">
+          <div id="voiceIdle" class="text-center space-y-4">
+            <div class="w-20 h-20 mx-auto rounded-full bg-orange-500/10 border-2 border-orange-500/40 flex items-center justify-center">
+              <svg class="w-10 h-10 text-orange-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
+            </div>
+            <p class="text-gray-400 text-sm">Appuie sur le bouton et dis le nom de l'exercice</p>
+            <button id="startVoiceBtn"
+              class="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold uppercase heading rounded-xl py-4 transition-colors cursor-pointer">
+              Commencer l'écoute
+            </button>
+          </div>
+          <div id="voiceListening" class="hidden text-center space-y-3">
+            <div class="w-20 h-20 mx-auto rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center animate-pulse">
+              <svg class="w-10 h-10 text-red-400" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>
+            </div>
+            <p class="text-red-400 font-semibold">Écoute en cours…</p>
+            <p class="text-gray-500 text-sm">Ex : "développé couché prise large"</p>
+          </div>
+        </div>
+
+        <!-- Step 1b: photo -->
+        <div id="stepPhoto" class="hidden p-4 space-y-4">
+          <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden">
+          <button id="photoPickBtn"
+            class="w-full border-2 border-dashed border-gray-600 hover:border-orange-500 rounded-xl py-10 flex flex-col items-center gap-3 text-gray-400 hover:text-orange-400 cursor-pointer transition-colors">
+            <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/></svg>
+            <span class="font-semibold">Prendre une photo</span>
+          </button>
+          <div id="photoPreviewWrap" class="hidden space-y-3">
+            <img id="photoPreview" class="w-full rounded-xl object-cover max-h-52" alt="Aperçu">
+            <button id="analyzePhotoBtn"
+              class="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold uppercase heading rounded-xl py-4 transition-colors cursor-pointer">
+              Analyser avec Claude
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 1c: manual text -->
+        <div id="stepManualText" class="hidden p-4 space-y-4">
           <div>
-            <label for="detectedName" class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Nom détecté</label>
-            <input type="text" id="detectedName"
+            <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Nom de l'exercice *</label>
+            <input type="text" id="manualTextInput" placeholder="Ex : Développé couché prise large"
+              class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 min-h-[52px]">
+          </div>
+          <button id="identifyTextBtn"
+            class="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold uppercase heading rounded-xl py-4 transition-colors cursor-pointer">
+            Identifier avec Claude
+          </button>
+          <button id="skipIdentifyBtn"
+            class="w-full text-gray-400 text-sm font-semibold py-2 cursor-pointer hover:text-white transition-colors">
+            Créer sans identification →
+          </button>
+        </div>
+
+        <!-- Step 2: identification result / confirmation -->
+        <div id="stepConfirm" class="hidden p-4 space-y-4">
+          <div id="confirmGifWrap" class="hidden">
+            <img id="confirmGif" class="w-full rounded-xl object-cover max-h-44" alt="">
+          </div>
+          <div class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 space-y-2">
+            <p class="text-xs uppercase tracking-widest text-gray-500 font-semibold">Exercice identifié</p>
+            <p id="confirmName" class="text-white font-bold text-xl heading"></p>
+            <div id="confirmMuscles" class="flex flex-wrap gap-1.5"></div>
+            <div id="confirmEquipWrap" class="hidden">
+              <p class="text-gray-400 text-xs mt-1" id="confirmEquip"></p>
+            </div>
+          </div>
+          <div id="confirmConfidenceWrap" class="text-xs text-center">
+            <span id="confirmConfidence" class="px-3 py-1 rounded-full font-semibold"></span>
+          </div>
+          <p class="text-center text-gray-300 font-semibold text-base">C'est bien cet exercice ?</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button id="confirmYesBtn"
+              class="flex flex-col items-center gap-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500 text-green-400 rounded-xl py-3 px-2 transition-colors cursor-pointer font-semibold text-sm">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              Oui
+            </button>
+            <button id="confirmEditBtn"
+              class="flex flex-col items-center gap-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-500 text-orange-400 rounded-xl py-3 px-2 transition-colors cursor-pointer font-semibold text-sm">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+              Modifier
+            </button>
+            <button id="confirmManualBtn"
+              class="flex flex-col items-center gap-1 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded-xl py-3 px-2 transition-colors cursor-pointer font-semibold text-sm">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              Manuel
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: exercise form (edit/manual) -->
+        <div id="stepForm" class="hidden p-4 space-y-4">
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Nom *</label>
+            <input type="text" id="formName"
               class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 min-h-[52px]">
           </div>
           <div>
-            <p class="text-xs uppercase tracking-widest text-gray-400 mb-2 font-semibold">Muscles</p>
-            <div id="detectedMuscles" class="flex flex-wrap gap-2"></div>
+            <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Description</label>
+            <textarea id="formDesc" rows="2"
+              class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 resize-none"></textarea>
           </div>
           <div>
-            <p class="text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Conseil</p>
-            <p id="detectedTips" class="text-gray-300 text-sm bg-gray-800 rounded-xl px-4 py-3"></p>
+            <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-semibold">Groupes musculaires</label>
+            <div id="formMuscleChips" class="flex flex-wrap gap-2"></div>
           </div>
-          <button id="confirmDetect"
-            class="w-full bg-green-500 hover:bg-green-400 text-white text-lg font-bold uppercase heading rounded-xl py-4 transition-colors duration-200 cursor-pointer min-h-[56px] disabled:opacity-60">
-            Confirmer et ajouter
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1 font-semibold">Équipement</label>
+            <input type="text" id="formEquip" placeholder="Barre, haltères, câble…"
+              class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-base rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 min-h-[52px]">
+          </div>
+          <button id="formSaveBtn"
+            class="w-full bg-orange-500 hover:bg-orange-400 text-white text-lg font-bold uppercase heading rounded-xl py-4 transition-colors cursor-pointer disabled:opacity-60">
+            Ajouter l'exercice
           </button>
         </div>
 
@@ -126,24 +224,23 @@
     </div>
   </div>
 
+  <!-- ── Nav ─────────────────────────────────────────────────────────────────── -->
   <nav class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50">
-    <div class="grid grid-cols-3 h-16">
-      <a href="index.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-        </svg>
+    <div class="grid grid-cols-4 h-16">
+      <a href="index.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
         Séance
       </a>
-      <a href="history.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-        </svg>
+      <a href="exercises.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-orange-500 cursor-pointer" aria-current="page">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+        Exercices
+      </a>
+      <a href="history.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
         Historique
       </a>
-      <a href="weekly.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors duration-200 cursor-pointer">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5m-9-6h.008v.008H12V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM9.75 12h.008v.008H9.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-        </svg>
+      <a href="weekly.html" class="flex flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5m-9-6h.008v.008H12V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM9.75 12h.008v.008H9.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
         Semaine
       </a>
     </div>
@@ -151,154 +248,368 @@
 
   <script src="app.js"></script>
   <script>
-    let exercises = [];
-    let detectedData = null;
-    let currentPhotoBase64 = null;
+  // ── State ─────────────────────────────────────────────────────────────────────
+  let exercises       = [];
+  let activeMuscle    = null;
+  let identifyResult  = null;  // {identified_name, confidence, exercise_db_match, muscles, gif_url}
+  let currentPhoto    = null;  // base64 for re-use
+  const selectedFormMuscles = new Set();
 
-    async function loadExercises() {
-      try {
-        exercises = await api.getExercises();
-        renderList();
-      } catch {
-        document.getElementById('exerciseList').innerHTML =
-          '<p class="text-red-400 text-center py-8">Impossible de charger les exercices</p>';
-      }
+  const FORM_MUSCLES = ['Pectoraux','Biceps','Dos','Triceps','Épaules','Mollets',
+                        'Quadriceps','Ischio-jambiers','Fessiers','Abdos','Cardio'];
+
+  // ── Library ───────────────────────────────────────────────────────────────────
+  async function loadLibrary() {
+    try {
+      exercises = await api.getExercises();
+      renderMuscleFilters();
+      renderLibrary();
+    } catch {
+      document.getElementById('libraryContainer').innerHTML =
+        '<p class="text-red-400 text-center py-8">Impossible de charger les exercices</p>';
+    }
+  }
+
+  function renderMuscleFilters() {
+    const allMuscles = new Set();
+    exercises.forEach(ex => (ex.muscles || []).forEach(m => allMuscles.add(m)));
+
+    const chips = document.getElementById('muscleFilters');
+    chips.innerHTML = `
+      <button onclick="setMuscleFilter(null)"
+        class="flex-shrink-0 muscle-filter px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${!activeMuscle ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-orange-500 hover:text-white'}">
+        Tous
+      </button>
+    ` + [...allMuscles].sort().map(m => `
+      <button onclick="setMuscleFilter('${m}')"
+        class="flex-shrink-0 muscle-filter px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${activeMuscle === m ? getMuscleColor(m) + ' !border-current' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-orange-500 hover:text-white'}">
+        ${escapeHtml(m)}
+      </button>
+    `).join('');
+  }
+
+  function setMuscleFilter(m) {
+    activeMuscle = m;
+    renderMuscleFilters();
+    renderLibrary();
+  }
+
+  function renderLibrary() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    let filtered = exercises.filter(ex => {
+      const matchQ = !q ||
+        ex.name.toLowerCase().includes(q) ||
+        (ex.muscles || []).some(m => m.toLowerCase().includes(q));
+      const matchM = !activeMuscle ||
+        (ex.muscles || []).some(m => m.toLowerCase() === activeMuscle.toLowerCase());
+      return matchQ && matchM;
+    });
+
+    const count = document.getElementById('exerciseCount');
+    count.textContent = `${exercises.length} exercice${exercises.length !== 1 ? 's' : ''}`;
+
+    const container = document.getElementById('libraryContainer');
+    if (!filtered.length) {
+      container.innerHTML = '<p class="text-gray-500 text-center py-10">Aucun exercice trouvé</p>';
+      return;
     }
 
-    function renderList() {
-      const count = exercises.length;
-      document.getElementById('exerciseCount').textContent =
-        `${count} exercice${count !== 1 ? 's' : ''}`;
+    // Group by first muscle
+    const groups = {};
+    filtered.forEach(ex => {
+      const g = (ex.muscles && ex.muscles[0]) || 'Autres';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(ex);
+    });
 
-      const container = document.getElementById('exerciseList');
-      if (!count) {
-        container.innerHTML = '<p class="text-gray-500 text-center py-10">Aucun exercice — appuyez sur + pour en ajouter un !</p>';
-        return;
-      }
-      container.innerHTML = exercises.map(ex => `
-        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 mb-3">
-          <h3 class="text-base font-semibold text-gray-100">${escapeHtml(ex.name)}</h3>
-          ${ex.description ? `<p class="text-gray-400 text-sm mt-1">${escapeHtml(ex.description)}</p>` : ''}
-          ${ex.muscles && ex.muscles.length ? `
-            <div class="flex flex-wrap gap-2 mt-2">
-              ${ex.muscles.map(m => `<span class="text-xs bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full">${escapeHtml(m)}</span>`).join('')}
-            </div>` : ''}
+    container.innerHTML = Object.keys(groups).sort().map(muscle => `
+      <div class="mb-6">
+        <div class="flex items-center gap-2 mb-2 px-0">
+          <span class="text-xs uppercase tracking-widest font-bold ${getMuscleColor(muscle).split(' ')[1]}">${escapeHtml(muscle)}</span>
+          <span class="text-xs text-gray-600">${groups[muscle].length}</span>
         </div>
-      `).join('');
+        <div class="space-y-2">
+          ${groups[muscle].sort((a,b) => a.name.localeCompare(b.name)).map(ex => `
+            <div class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-white text-sm leading-snug">${escapeHtml(ex.name)}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <div class="flex gap-1 flex-wrap">
+                    ${(ex.muscles || []).slice(0,2).map(m => muscleBadge(m)).join('')}
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                ${ex.last_session_date ? `<p class="text-gray-500 text-xs">${daysAgo(ex.last_session_date)}</p>` : ''}
+                ${ex.session_count ? `<p class="text-gray-600 text-xs">${ex.session_count} séance${ex.session_count > 1 ? 's' : ''}</p>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('searchInput').addEventListener('input', () => renderLibrary());
+
+  // ── Modal management ──────────────────────────────────────────────────────────
+  function openModal() {
+    showStep('stepMode');
+    document.getElementById('newExTitle').textContent = 'Nouvel exercice';
+    document.getElementById('newExBack').classList.add('hidden');
+    document.getElementById('newExModal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('newExModal').classList.add('hidden');
+    identifyResult = null;
+    currentPhoto = null;
+  }
+
+  function showStep(stepId) {
+    ['stepMode','stepDictate','stepPhoto','stepManualText','stepConfirm','stepForm'].forEach(id =>
+      document.getElementById(id).classList.add('hidden')
+    );
+    document.getElementById(stepId).classList.remove('hidden');
+  }
+
+  document.getElementById('fabBtn').addEventListener('click', openModal);
+  document.getElementById('newExClose').addEventListener('click', closeModal);
+  document.getElementById('newExBackdrop').addEventListener('click', closeModal);
+  document.getElementById('newExBack').addEventListener('click', () => {
+    showStep('stepMode');
+    document.getElementById('newExTitle').textContent = 'Nouvel exercice';
+    document.getElementById('newExBack').classList.add('hidden');
+  });
+
+  function goToStep(stepId, title) {
+    showStep(stepId);
+    document.getElementById('newExTitle').textContent = title;
+    document.getElementById('newExBack').classList.remove('hidden');
+  }
+
+  // ── Mode: Dictate ──────────────────────────────────────────────────────────────
+  document.getElementById('modeDictate').addEventListener('click', () => {
+    goToStep('stepDictate', 'Dicter le nom');
+    document.getElementById('voiceIdle').classList.remove('hidden');
+    document.getElementById('voiceListening').classList.add('hidden');
+  });
+
+  document.getElementById('startVoiceBtn').addEventListener('click', () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return showToast('Reconnaissance vocale non disponible', 'error');
+    const rec = new SR();
+    rec.lang = 'fr-FR';
+    rec.continuous = false;
+    rec.interimResults = false;
+    document.getElementById('voiceIdle').classList.add('hidden');
+    document.getElementById('voiceListening').classList.remove('hidden');
+
+    rec.onresult = async (e) => {
+      const text = e.results[0][0].transcript;
+      document.getElementById('voiceListening').classList.add('hidden');
+      document.getElementById('voiceIdle').classList.remove('hidden');
+      await runIdentify({ text });
+    };
+    rec.onerror = () => {
+      document.getElementById('voiceListening').classList.add('hidden');
+      document.getElementById('voiceIdle').classList.remove('hidden');
+      showToast('Erreur de reconnaissance', 'error');
+    };
+    rec.start();
+  });
+
+  // ── Mode: Photo ────────────────────────────────────────────────────────────────
+  document.getElementById('modePhoto').addEventListener('click', () => {
+    goToStep('stepPhoto', 'Photo de la machine');
+    document.getElementById('photoPreviewWrap').classList.add('hidden');
+    currentPhoto = null;
+  });
+
+  document.getElementById('photoPickBtn').addEventListener('click', () => {
+    document.getElementById('photoInput').value = '';
+    document.getElementById('photoInput').click();
+  });
+
+  document.getElementById('photoInput').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      currentPhoto = e.target.result;
+      document.getElementById('photoPreview').src = currentPhoto;
+      document.getElementById('photoPreviewWrap').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('analyzePhotoBtn').addEventListener('click', async () => {
+    if (!currentPhoto) return;
+    const btn = document.getElementById('analyzePhotoBtn');
+    setLoading(btn, true);
+    try {
+      await runIdentify({ image_base64: currentPhoto.split(',')[1] });
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // ── Mode: Manual text ──────────────────────────────────────────────────────────
+  document.getElementById('modeManual').addEventListener('click', () => {
+    goToStep('stepManualText', 'Nom de l\'exercice');
+    document.getElementById('manualTextInput').value = '';
+    document.getElementById('manualTextInput').focus();
+  });
+
+  document.getElementById('identifyTextBtn').addEventListener('click', async () => {
+    const text = document.getElementById('manualTextInput').value.trim();
+    if (!text) return showToast('Saisir un nom', 'error');
+    const btn = document.getElementById('identifyTextBtn');
+    setLoading(btn, true);
+    try { await runIdentify({ text }); } finally { setLoading(btn, false); }
+  });
+
+  document.getElementById('skipIdentifyBtn').addEventListener('click', () => {
+    const name = document.getElementById('manualTextInput').value.trim();
+    openForm({ name, muscles: [], gif_url: null, equipment: null, instructions: null, source: 'manual' });
+  });
+
+  // ── Identify ──────────────────────────────────────────────────────────────────
+  async function runIdentify(payload) {
+    try {
+      identifyResult = await api.identifyExercise(payload);
+      showConfirmStep(identifyResult);
+    } catch (e) {
+      showToast(e.message || 'Identification échouée', 'error');
+    }
+  }
+
+  function showConfirmStep(result) {
+    goToStep('stepConfirm', 'Confirmer');
+
+    document.getElementById('confirmName').textContent = result.identified_name || '—';
+    document.getElementById('confirmMuscles').innerHTML = (result.muscles || []).map(m => muscleBadge(m)).join('');
+
+    const gifUrl = result.gif_url || (result.exercise_db_match && result.exercise_db_match.gifUrl);
+    if (gifUrl) {
+      document.getElementById('confirmGif').src = gifUrl;
+      document.getElementById('confirmGifWrap').classList.remove('hidden');
+    } else {
+      document.getElementById('confirmGifWrap').classList.add('hidden');
     }
 
-    // Modal
-    document.getElementById('fabBtn').addEventListener('click', () => {
-      document.getElementById('modal').classList.remove('hidden');
-    });
-    document.getElementById('closeModal').addEventListener('click', closeModal);
-    document.getElementById('modal').addEventListener('click', e => {
-      if (e.target === document.getElementById('modal')) closeModal();
-    });
-
-    function closeModal() {
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('manualName').value = '';
-      document.getElementById('manualDesc').value = '';
-      document.getElementById('photoInput').value = '';
-      document.getElementById('photoPreviewDiv').classList.add('hidden');
-      document.getElementById('detectResult').classList.add('hidden');
-      currentPhotoBase64 = null;
-      detectedData = null;
-      switchTab('manuel');
+    const equip = result.exercise_db_match && result.exercise_db_match.equipment;
+    if (equip) {
+      document.getElementById('confirmEquip').textContent = equip;
+      document.getElementById('confirmEquipWrap').classList.remove('hidden');
+    } else {
+      document.getElementById('confirmEquipWrap').classList.add('hidden');
     }
 
-    function switchTab(tab) {
-      const isManuel = tab === 'manuel';
-      document.getElementById('panelManuel').classList.toggle('hidden', !isManuel);
-      document.getElementById('panelPhoto').classList.toggle('hidden', isManuel);
-      const active = 'bg-orange-500 text-white';
-      const inactive = 'bg-gray-700 text-gray-300 hover:bg-gray-600';
-      document.getElementById('tabManuel').className = `flex-1 py-2.5 rounded-xl text-sm font-semibold uppercase cursor-pointer transition-colors duration-200 ${isManuel ? active : inactive}`;
-      document.getElementById('tabPhoto').className = `flex-1 py-2.5 rounded-xl text-sm font-semibold uppercase cursor-pointer transition-colors duration-200 ${!isManuel ? active : inactive}`;
-    }
+    const conf = result.confidence || 'medium';
+    const confEl = document.getElementById('confirmConfidence');
+    const confMap = {
+      high:   'bg-green-500/20 text-green-400',
+      medium: 'bg-orange-500/20 text-orange-400',
+      low:    'bg-gray-500/20 text-gray-400',
+    };
+    confEl.className = `px-3 py-1 rounded-full font-semibold text-xs ${confMap[conf] || confMap.medium}`;
+    confEl.textContent = { high: 'Haute confiance', medium: 'Confiance moyenne', low: 'Faible confiance' }[conf] || conf;
+  }
 
-    // Manuel submit
-    document.getElementById('manualSubmit').addEventListener('click', async () => {
-      const btn = document.getElementById('manualSubmit');
-      const name = document.getElementById('manualName').value.trim();
-      if (!name) return showToast('Nom requis', 'error');
+  document.getElementById('confirmYesBtn').addEventListener('click', async () => {
+    if (!identifyResult) return;
+    const db = identifyResult.exercise_db_match;
+    const instructions = db && db.instructions
+      ? db.instructions.map((s, i) => `${i+1}. ${s}`).join('\n') : null;
+    const gifUrl = identifyResult.gif_url || (db && db.gifUrl) || null;
+    const equip  = db && db.equipment || null;
 
-      setLoading(btn, true);
-      try {
-        await api.createExercise({
-          name,
-          description: document.getElementById('manualDesc').value.trim() || null,
-        });
-        showToast('Exercice ajouté !');
-        closeModal();
-        loadExercises();
-      } catch (e) {
-        showToast(e.message, 'error');
-      } finally {
-        setLoading(btn, false);
-      }
+    const btn = document.getElementById('confirmYesBtn');
+    setLoading(btn, true);
+    try {
+      await saveExercise({
+        name:         identifyResult.identified_name,
+        muscles:      identifyResult.muscles,
+        gif_url:      gifUrl,
+        image_url:    gifUrl,
+        instructions: instructions,
+        equipment:    equip,
+        source:       db ? 'exercisedb' : 'claude',
+      });
+    } finally { setLoading(btn, false); }
+  });
+
+  document.getElementById('confirmEditBtn').addEventListener('click', () => {
+    const db = identifyResult && identifyResult.exercise_db_match;
+    openForm({
+      name:      identifyResult ? identifyResult.identified_name : '',
+      muscles:   identifyResult ? (identifyResult.muscles || []) : [],
+      equipment: db && db.equipment || null,
+      gif_url:   identifyResult ? identifyResult.gif_url : null,
+      source:    'manual',
     });
+  });
 
-    // Photo : sélection fichier
-    document.getElementById('photoInput').addEventListener('change', function () {
-      const file = this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        currentPhotoBase64 = e.target.result;
-        document.getElementById('photoPreview').src = currentPhotoBase64;
-        document.getElementById('photoPreviewDiv').classList.remove('hidden');
-        document.getElementById('detectResult').classList.add('hidden');
-      };
-      reader.readAsDataURL(file);
-    });
+  document.getElementById('confirmManualBtn').addEventListener('click', () => {
+    openForm({ name: '', muscles: [], gif_url: null, equipment: null, source: 'manual' });
+  });
 
-    // Photo : analyser
-    document.getElementById('analyzeBtn').addEventListener('click', async () => {
-      const btn = document.getElementById('analyzeBtn');
-      if (!currentPhotoBase64) return;
+  // ── Form step ──────────────────────────────────────────────────────────────────
+  function openForm(prefill = {}) {
+    goToStep('stepForm', 'Créer l\'exercice');
+    document.getElementById('formName').value   = prefill.name || '';
+    document.getElementById('formDesc').value   = '';
+    document.getElementById('formEquip').value  = prefill.equipment || '';
+    selectedFormMuscles.clear();
+    (prefill.muscles || []).forEach(m => selectedFormMuscles.add(m));
+    renderFormMuscleChips();
+  }
 
-      setLoading(btn, true);
-      try {
-        const result = await api.detectMachine(currentPhotoBase64);
-        detectedData = result;
-        document.getElementById('detectedName').value = result.name;
-        document.getElementById('detectedMuscles').innerHTML = result.muscles.map(m =>
-          `<span class="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded-full">${escapeHtml(m)}</span>`
-        ).join('');
-        document.getElementById('detectedTips').textContent = result.tips;
-        document.getElementById('detectResult').classList.remove('hidden');
-      } catch (e) {
-        showToast(e.message, 'error');
-      } finally {
-        setLoading(btn, false);
-      }
-    });
+  function renderFormMuscleChips() {
+    document.getElementById('formMuscleChips').innerHTML = FORM_MUSCLES.map(m => {
+      const on = [...selectedFormMuscles].some(s => s.toLowerCase() === m.toLowerCase());
+      return `<button type="button" onclick="toggleFormMuscle('${m}')" data-fm="${m}"
+        class="form-muscle-chip px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors cursor-pointer
+               ${on ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-orange-500 hover:text-white'}">
+        ${m}
+      </button>`;
+    }).join('');
+  }
 
-    // Photo : confirmer
-    document.getElementById('confirmDetect').addEventListener('click', async () => {
-      const btn = document.getElementById('confirmDetect');
-      if (!detectedData) return;
+  function toggleFormMuscle(m) {
+    const existing = [...selectedFormMuscles].find(s => s.toLowerCase() === m.toLowerCase());
+    if (existing) { selectedFormMuscles.delete(existing); } else { selectedFormMuscles.add(m); }
+    renderFormMuscleChips();
+  }
 
-      setLoading(btn, true);
-      try {
-        await api.createExercise({
-          name: document.getElementById('detectedName').value.trim(),
-          muscles: detectedData.muscles,
-          description: detectedData.tips,
-        });
-        showToast('Exercice ajouté !');
-        closeModal();
-        loadExercises();
-      } catch (e) {
-        showToast(e.message, 'error');
-      } finally {
-        setLoading(btn, false);
-      }
-    });
+  document.getElementById('formSaveBtn').addEventListener('click', async () => {
+    const name = document.getElementById('formName').value.trim();
+    if (!name) return showToast('Nom requis', 'error');
+    const btn = document.getElementById('formSaveBtn');
+    setLoading(btn, true);
+    try {
+      await saveExercise({
+        name,
+        description: document.getElementById('formDesc').value.trim() || null,
+        muscles:     [...selectedFormMuscles],
+        equipment:   document.getElementById('formEquip').value.trim() || null,
+        source:      'manual',
+      });
+    } finally { setLoading(btn, false); }
+  });
 
-    loadExercises();
+  async function saveExercise(data) {
+    try {
+      await api.createExercise(data);
+      showToast('Exercice ajouté !');
+      closeModal();
+      await loadLibrary();
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  loadLibrary();
   </script>
 </body>
 </html>

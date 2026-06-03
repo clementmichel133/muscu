@@ -1,5 +1,7 @@
 import json
 import os
+import urllib.parse
+import urllib.request
 
 import anthropic
 
@@ -136,3 +138,111 @@ def weekly_suggestion(sessions: list[dict]) -> dict:
         text = text.strip()
 
     return json.loads(text)
+
+
+# ── Exercise identification ───────────────────────────────────────────────────
+
+_IDENTIFY_SYSTEM = (
+    "Tu es un expert en musculation. "
+    "Identifie le nom exact et standardisé de l'exercice (en français). "
+    'Réponds UNIQUEMENT en JSON : {"name": "nom de l\'exercice", "confidence": "high|medium|low"}'
+)
+
+
+def _parse_json_response(text: str) -> dict:
+    """Strip markdown fences and parse JSON."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
+    return json.loads(text)
+
+
+def identify_exercise_from_text(text: str) -> dict:
+    """Normalise a free-text description to a canonical exercise name.
+    Returns {"name": str, "confidence": "high"|"medium"|"low"}."""
+    response = _get_client().messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=128,
+        system=_IDENTIFY_SYSTEM,
+        messages=[{"role": "user", "content": f"Exercice décrit : {text}"}],
+    )
+    return _parse_json_response(response.content[0].text)
+
+
+def identify_exercise_from_photo(image_base64: str) -> dict:
+    """Identify an exercise/machine from a photo.
+    Returns {"name": str, "confidence": "high"|"medium"|"low"}."""
+    media_type, data = _parse_data_url(image_base64)
+    response = _get_client().messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=128,
+        system=_IDENTIFY_SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": data},
+                },
+                {"type": "text", "text": "Identifie cet exercice ou cette machine de musculation."},
+            ],
+        }],
+    )
+    return _parse_json_response(response.content[0].text)
+
+
+def generate_exercise_tip(exercise: dict, history: list[dict]) -> str:
+    """Generate 2-3 sentences of personalised coaching advice for this exercise,
+    based on the user's actual history. Returns plain text."""
+    name    = exercise.get("name", "")
+    muscles = exercise.get("muscles") or []
+
+    ctx = "First time doing this exercise."
+    if history:
+        all_sets = [s for h in history for s in (h.get("sets") or [])]
+        if all_sets:
+            max_w = max(s["weight_kg"] for s in all_sets)
+            last_sets = history[0].get("sets") or []
+            if last_sets:
+                ctx = (
+                    f"Personal record: {max_w} kg. "
+                    f"Last session: {len(last_sets)} sets, "
+                    f"{last_sets[0]['reps']} reps @ {last_sets[0]['weight_kg']} kg."
+                )
+
+    prompt = (
+        f"Exercice : {name}\n"
+        f"Muscles : {', '.join(muscles)}\n"
+        f"Stats utilisateur : {ctx}\n\n"
+        "Réponds uniquement en français. "
+        "Génère un conseil personnalisé de 2-3 phrases sur la technique ou la progression. "
+        "Sois précis et pratique."
+    )
+    response = _get_client().messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=200,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
+def search_exercisedb(name: str, api_key: str, limit: int = 5) -> list[dict]:
+    """Search ExerciseDB by exercise name via RapidAPI.
+    Returns raw ExerciseDB objects, or [] on any error."""
+    encoded = urllib.parse.quote(name.lower())
+    url = f"https://exercisedb.p.rapidapi.com/exercises/name/{encoded}?limit={limit}&offset=0"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "X-RapidAPI-Key": api_key,
+            "X-RapidAPI-Host": "exercisedb.p.rapidapi.com",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return []
