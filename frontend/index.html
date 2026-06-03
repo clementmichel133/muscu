@@ -78,23 +78,59 @@
         <p id="lastSessionText" class="text-orange-400 text-sm font-semibold"></p>
       </div>
 
-      <!-- Sets list -->
-      <div id="setsList" class="space-y-2"></div>
+      <!-- Input mode selector -->
+      <div id="inputModePanel" class="grid grid-cols-3 gap-2">
+        <button id="dictateBtn"
+          class="flex flex-col items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl py-4 px-2 transition-colors">
+          <span class="text-2xl leading-none">🎤</span>
+          <span class="text-xs font-semibold text-gray-300 text-center leading-tight">Dicter<br>les séries</span>
+        </button>
+        <button id="photoSessionBtn"
+          class="flex flex-col items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl py-4 px-2 transition-colors">
+          <span class="text-2xl leading-none">📷</span>
+          <span class="text-xs font-semibold text-gray-300 text-center leading-tight">Photo de<br>la machine</span>
+        </button>
+        <button id="manualBtn"
+          class="flex flex-col items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-orange-500 rounded-xl py-4 px-2 transition-colors">
+          <span class="text-2xl leading-none">✏️</span>
+          <span class="text-xs font-semibold text-gray-300 text-center leading-tight">Saisie<br>manuelle</span>
+        </button>
+      </div>
 
-      <!-- Add set button -->
-      <button id="addSetBtn"
-        class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-orange-500 text-gray-400 hover:text-white text-base font-semibold rounded-xl py-4 transition-colors flex items-center justify-center gap-2">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-        </svg>
-        Ajouter une série
-      </button>
+      <!-- Voice panel (hidden) -->
+      <div id="voicePanel" class="hidden bg-gray-800 border border-orange-500/40 rounded-xl px-4 py-5 text-center space-y-3">
+        <div id="voiceStatus" class="text-orange-400 font-semibold text-lg">Écoute en cours…</div>
+        <p class="text-gray-500 text-sm">Ex : "3 séries 8 reps 80 kilos"</p>
+        <button id="cancelVoiceBtn" class="text-gray-400 hover:text-white text-sm font-semibold transition-colors">
+          Annuler
+        </button>
+      </div>
 
-      <!-- Save button -->
-      <button id="submitBtn"
-        class="w-full bg-orange-500 hover:bg-orange-400 text-white text-xl font-bold uppercase heading rounded-xl py-5 transition-colors duration-200 cursor-pointer min-h-[64px] disabled:opacity-60">
-        Enregistrer la séance
-      </button>
+      <!-- Photo capture input (hidden) -->
+      <input type="file" id="photoSessionInput" accept="image/*" capture="environment" class="hidden">
+
+      <!-- Manual series form (shown when Manuel clicked) -->
+      <div id="manualPanel" class="hidden space-y-4">
+
+        <!-- Sets list -->
+        <div id="setsList" class="space-y-2"></div>
+
+        <!-- Add set button -->
+        <button id="addSetBtn"
+          class="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-orange-500 text-gray-400 hover:text-white text-base font-semibold rounded-xl py-4 transition-colors flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Ajouter une série
+        </button>
+
+        <!-- Save button -->
+        <button id="submitBtn"
+          class="w-full bg-orange-500 hover:bg-orange-400 text-white text-xl font-bold uppercase heading rounded-xl py-5 transition-colors duration-200 cursor-pointer min-h-[64px] disabled:opacity-60">
+          Enregistrer la séance
+        </button>
+
+      </div>
 
     </div>
 
@@ -323,6 +359,20 @@
       return btn;
     }
 
+    // ── Input mode helpers ─────────────────────────────────────────────────
+    function showInputModePanel() {
+      document.getElementById('inputModePanel').classList.remove('hidden');
+      document.getElementById('voicePanel').classList.add('hidden');
+      document.getElementById('manualPanel').classList.add('hidden');
+    }
+
+    function switchToManual() {
+      document.getElementById('inputModePanel').classList.add('hidden');
+      document.getElementById('voicePanel').classList.add('hidden');
+      document.getElementById('manualPanel').classList.remove('hidden');
+      if (document.getElementById('setsList').children.length === 0) addSet();
+    }
+
     // ── Exercise selection ─────────────────────────────────────────────────
     async function selectExercise(ex) {
       selectedExercise = ex;
@@ -331,6 +381,7 @@
       document.getElementById('selectedExerciseName').textContent = ex.name;
       document.getElementById('lastSession').classList.add('hidden');
       document.getElementById('setsList').innerHTML = '';
+      showInputModePanel();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       try {
@@ -340,7 +391,7 @@
           document.getElementById('lastSessionText').textContent =
             `${formatLastSession(last)} — ${daysAgo(last.date)}`;
           document.getElementById('lastSession').classList.remove('hidden');
-
+          // Pre-populate setsList (inside hidden manualPanel, ready when Manuel clicked)
           if (last.sets_data && last.sets_data.length > 0) {
             addSet(last.sets_data[0].reps, last.sets_data[0].weight_kg);
           } else if (last.reps && last.weight_kg != null) {
@@ -419,12 +470,113 @@
       renderExerciseList(allExercises, '');
     });
 
+    document.getElementById('manualBtn').addEventListener('click', () => switchToManual());
+
     document.getElementById('addSetBtn').addEventListener('click', () => addSet());
 
     document.getElementById('exerciseSearch').addEventListener('input', function () {
       renderExerciseList(allExercises, this.value);
     });
 
+    // ── Voice dictation ────────────────────────────────────────────────────
+    function parseVoiceInput(transcript) {
+      const t = transcript.toLowerCase()
+        .replace(/répétitions?/g, 'reps')
+        .replace(/kilos?/g, 'kg')
+        .replace(/séries?/g, 'series')
+        .replace(/avec/g, '');
+
+      const numSetsMatch = t.match(/(\d+)\s*series/);
+      const repsMatch = t.match(/(\d+)\s*reps/);
+      const weightMatch = t.match(/(\d+(?:[.,]\d+)?)\s*kg/);
+
+      const numSets = numSetsMatch ? parseInt(numSetsMatch[1]) : 1;
+      const reps = repsMatch ? parseInt(repsMatch[1]) : null;
+      const weight = weightMatch ? parseFloat(weightMatch[1].replace(',', '.')) : null;
+
+      if (reps !== null || weight !== null) {
+        document.getElementById('setsList').innerHTML = '';
+        for (let i = 0; i < numSets; i++) {
+          addSet(reps ?? 8, weight ?? 20);
+        }
+        renumberSets();
+        switchToManual();
+        showToast(`${numSets} série${numSets > 1 ? 's' : ''} : ${reps ?? '?'} reps @ ${weight ?? '?'} kg`);
+      } else {
+        showToast(`Non reconnu : "${transcript}"`, 'error');
+        showInputModePanel();
+      }
+    }
+
+    let activeRecognition = null;
+
+    document.getElementById('dictateBtn').addEventListener('click', () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return showToast('Reconnaissance vocale non disponible', 'error');
+
+      document.getElementById('inputModePanel').classList.add('hidden');
+      document.getElementById('voicePanel').classList.remove('hidden');
+
+      const recognition = new SR();
+      recognition.lang = 'fr-FR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      activeRecognition = recognition;
+
+      recognition.onresult = (event) => {
+        activeRecognition = null;
+        document.getElementById('voicePanel').classList.add('hidden');
+        parseVoiceInput(event.results[0][0].transcript);
+      };
+
+      recognition.onerror = (event) => {
+        activeRecognition = null;
+        document.getElementById('voicePanel').classList.add('hidden');
+        if (event.error !== 'aborted') showToast('Erreur de reconnaissance vocale', 'error');
+        showInputModePanel();
+      };
+
+      recognition.onend = () => {
+        activeRecognition = null;
+        if (!document.getElementById('manualPanel').classList.contains('hidden')) return;
+        document.getElementById('voicePanel').classList.add('hidden');
+        showInputModePanel();
+      };
+
+      recognition.start();
+    });
+
+    document.getElementById('cancelVoiceBtn').addEventListener('click', () => {
+      if (activeRecognition) { activeRecognition.abort(); activeRecognition = null; }
+      document.getElementById('voicePanel').classList.add('hidden');
+      showInputModePanel();
+    });
+
+    // ── Photo capture ──────────────────────────────────────────────────────
+    document.getElementById('photoSessionBtn').addEventListener('click', () => {
+      document.getElementById('photoSessionInput').value = '';
+      document.getElementById('photoSessionInput').click();
+    });
+
+    document.getElementById('photoSessionInput').addEventListener('change', async function () {
+      if (!this.files.length) return;
+      const file = this.files[0];
+      try {
+        const b64 = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = e => res(e.target.result.split(',')[1]);
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+        const result = await api.detectMachine(b64);
+        if (result && result.name) showToast(`Machine : ${result.name}`);
+      } catch {
+        // Silently ignore detection failure
+      }
+      switchToManual();
+    });
+
+    // ── Save session ───────────────────────────────────────────────────────
     document.getElementById('submitBtn').addEventListener('click', async () => {
       if (!selectedExercise) return showToast('Choisir un exercice', 'error');
 
@@ -448,19 +600,19 @@
           exercise_id: selectedExercise.id,
           sets_data: setsData,
         });
-        // Update local cache so exercise appears as recent
         const idx = allExercises.findIndex(e => e.id === selectedExercise.id);
         if (idx >= 0) allExercises[idx].last_session_date = document.getElementById('date').value;
 
         showToast('Séance enregistrée !');
 
-        // Reset: keep one row pre-filled with last set values
+        // Reset setsList with one pre-filled row, return to mode selector
         const last = setsData[setsData.length - 1];
         document.getElementById('setsList').innerHTML = '';
         addSet(last.reps, last.weight_kg);
         document.getElementById('lastSessionText').textContent =
           `${setsData.length}×${setsData[0].reps} reps @ ${setsData[0].weight_kg} kg — aujourd'hui`;
         document.getElementById('lastSession').classList.remove('hidden');
+        showInputModePanel();
       } catch (e) {
         showToast(e.message, 'error');
       } finally {
