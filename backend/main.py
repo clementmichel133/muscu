@@ -482,7 +482,11 @@ def post_admin_import_exercises(x_admin_key: str = Header(...)):
         )
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        result = mod.import_exercises()
+        import json
+        cache_path = os.path.join(os.path.dirname(__file__), "exercisedb_cache.json")
+        with open(cache_path) as f:
+            data = json.load(f)
+        result = mod.import_exercises(data)
         return {"status": "ok", "imported": result}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
