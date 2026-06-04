@@ -469,5 +469,24 @@ def post_admin_seed(x_admin_key: str = Header(...)):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+
+@app.post("/admin/import-exercises")
+def post_admin_import_exercises(x_admin_key: str = Header(...)):
+    if x_admin_key != _ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Clé admin invalide")
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "download_exercisedb",
+            os.path.join(os.path.dirname(__file__), "download_exercisedb.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        result = mod.import_exercises()
+        return {"status": "ok", "imported": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 # Doit être monté en dernier — les routes API ont la priorité
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
