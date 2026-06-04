@@ -1,4 +1,5 @@
-import os
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
